@@ -145,6 +145,23 @@ function addSubject() {
 
     if (subjectInput.trim() !== "" && sectionInput.trim() !== "" && hoursInput > 0) {
         subjects.push({
+            sublet subjects = [];
+let isSaved = false; // Track if the timetable is saved
+
+// Event listener for form submission
+document.getElementById('subjectForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    addSubject();
+});
+
+// Function to add a subject
+function addSubject() {
+    const subjectInput = document.getElementById('subjectInput').value;
+    const sectionInput = document.getElementById('sectionInput').value;
+    const hoursInput = parseInt(document.getElementById('hoursInput').value, 10);
+
+    if (subjectInput.trim() !== "" && sectionInput.trim() !== "" && hoursInput > 0) {
+        subjects.push({
             subject: subjectInput,
             section: sectionInput,
             hoursPerWeek: hoursInput
@@ -225,7 +242,6 @@ function generateTimetable() {
 
     const timetableContainer = document.getElementById('timetable-container');
     timetableContainer.innerHTML = '';  // Clear existing tables
-    globalUsedSlots = {};  // Reset global used slots
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const timeSlots = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00'];
@@ -241,12 +257,13 @@ function generateTimetable() {
 
     // Create timetable for each section
     for (const section in subjectsBySection) {
-        createTimetableForSection(section, subjectsBySection[section], days, timeSlots);
+        const sectionUsedSlots = {}; // Independent used slots for this section
+        createTimetableForSection(section, subjectsBySection[section], days, timeSlots, sectionUsedSlots);
     }
 }
 
 // Function to create a timetable for a specific section
-function createTimetableForSection(section, subjects, days, timeSlots) {
+function createTimetableForSection(section, subjects, days, timeSlots, sectionUsedSlots) {
     const timetableWrapper = document.createElement('div');
     timetableWrapper.className = 'timetable-wrapper';
 
@@ -295,16 +312,16 @@ function createTimetableForSection(section, subjects, days, timeSlots) {
     document.getElementById('timetable-container').appendChild(timetableWrapper);
 
     // Fill timetable with subjects for the section
-    fillTimetable(tbody, subjects, timeSlots, days);
+    fillTimetable(tbody, subjects, timeSlots, days, sectionUsedSlots);
 }
 
 // Function to fill the timetable without overlapping between sections
-function fillTimetable(tbody, subjects, timeSlots, days) {
+function fillTimetable(tbody, subjects, timeSlots, days, sectionUsedSlots) {
     subjects.forEach(subject => {
         let hoursScheduled = 0;
 
         // Collect available slots
-        const availableSlots = getAvailableSlots(tbody, timeSlots, days);
+        const availableSlots = getAvailableSlots(tbody, timeSlots, days, sectionUsedSlots);
 
         // Schedule the subject in random slots until hours are fulfilled
         for (let k = 0; k < availableSlots.length && hoursScheduled < subject.hoursPerWeek; k++) {
@@ -316,7 +333,7 @@ function fillTimetable(tbody, subjects, timeSlots, days) {
                 cell.textContent = subject.subject;
                 cell.classList.remove('empty');
                 cell.classList.add('filled');
-                markSlotUsed(slot.timeIndex, slot.dayIndex); // Mark this slot as used
+                markSlotUsed(slot.timeIndex, slot.dayIndex, sectionUsedSlots); // Mark this slot as used
                 hoursScheduled++;
             }
         }
@@ -324,12 +341,12 @@ function fillTimetable(tbody, subjects, timeSlots, days) {
 }
 
 // Function to get available slots that are not used
-function getAvailableSlots(tbody, timeSlots, days) {
+function getAvailableSlots(tbody, timeSlots, days, sectionUsedSlots) {
     const availableSlots = [];
 
     for (let i = 0; i < timeSlots.length; i++) {
         for (let j = 0; j < days.length; j++) {
-            if (!isSlotUsed(i, j)) {
+            if (!isSlotUsed(i, j, sectionUsedSlots)) {
                 availableSlots.push({ timeIndex: i, dayIndex: j });
             }
         }
@@ -347,14 +364,14 @@ function shuffleArray(array) {
     }
 }
 
-// Function to mark a time slot (i, j) as used globally
-function markSlotUsed(timeIndex, dayIndex) {
-    globalUsedSlots[`${timeIndex}-${dayIndex}`] = true; // Mark the slot as used globally
+// Function to mark a time slot (i, j) as used for a section
+function markSlotUsed(timeIndex, dayIndex, sectionUsedSlots) {
+    sectionUsedSlots[`${timeIndex}-${dayIndex}`] = true; // Mark the slot as used for this section
 }
 
-// Function to check if a time slot (i, j) is already used globally
-function isSlotUsed(timeIndex, dayIndex) {
-    return globalUsedSlots[`${timeIndex}-${dayIndex}`] === true;
+// Function to check if a time slot (i, j) is already used for a section
+function isSlotUsed(timeIndex, dayIndex, sectionUsedSlots) {
+    return sectionUsedSlots[`${timeIndex}-${dayIndex}`] === true;
 }
 
 // Event listener for save button
@@ -362,6 +379,7 @@ document.getElementById('saveButton').addEventListener('click', () => {
     isSaved = true; // Mark timetable as saved
     document.getElementById('generateButton').disabled = true;    
 });
+
 
     </script>
 </body>
